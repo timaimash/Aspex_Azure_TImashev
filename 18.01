@@ -1,0 +1,23 @@
+UniBi компания по созданию мобильных приложений. 
+
+Работники компании, Группы, Роли, Сервисы:
+Director – Resource group “Administrator”-Role “Owner”- Services (Azure SQL, Power BI, Teams)
+IT Admin - Resource group “Administrator”-Role “Global Admin”- Services (All services)
+Accountant - Resource group “Analyst”-Role “Contributor” - Services (Azure SQL, Power BI, Teams)
+UX/UI Designer- Resource group “Administrator” - Role “Contributor” - Services  (Visual Studio, Azure DevOps, Virtual Machine, Teams)
+Data Engineer - Resource group “Administrator” - Role “Contributor” - Services (Azure SQL, Azure DevOps, Teams)
+Software Engineer - Resource group “Administrator” - Role “Contributor” - Services (Azure SQL, Visual Studio, Azure DevOps, Virtual Machine, Teams)
+QA Automation - Resource group “Administrator” - Role “Contributor” - Services (Azure SQL, Visual Studio, Azure DevOps, Virtual Machine, Teams)
+
+Resources:
+Virtual machines, web apps, databases, virtual networks
+
+Resource Groups:
+“Administrator” - All Resources 
+“Analyst” - Resources: web apps, databases
+
+Кроме Accountant все имеют доступ и пользуются довольно обширными наборами инструментов для работы, 
+поэтому не стоит разбивать на много групп безопасности, можно регулировать доступы к конкретным сервисам а также роли.
+
+Services:
+Power BI, Teams, Azure AD, Azure SQL, Azure Devops, Visual Studio, Virtual Machine
