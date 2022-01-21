@@ -2,8 +2,8 @@ UniBi компания по созданию мобильных приложен
 
 RBAC:
 
-Subscription: “Company” (All resource groups)
-Resource groups: “Developer” (Virtual machines, virtual networks), “Analyst” (Databases), “User” (Web Apps)
+Subscription: “Director” (All resource groups) – Role Owner, “Admin” (All resource groups) – Role User Access Administrator
+Resource groups: “Developer” (Virtual machines, virtual networks) – Role Contributor, “Analyst” (Databases) – Role Contributor, “User” (Web Apps) – Role Contributor
 
 Roles:
 “Owner” — Has full access to all resources including the right to delegate access to others.
@@ -16,10 +16,10 @@ Services:
 Power BI, Teams, Azure SQL, Azure Devops, Visual Studio, Virtual Machine
 
 Работники компании, Группы, Роли, Сервисы:
-Director – Subscription “Company”, Role “Owner”, Services (Power BI, Teams)
-IT Admin - Subscription “Company”, Role “User Acc Administrator”- Services (Power BI, Teams, Azure SQL, Azure Devops, Visual Studio, Virtual Machine)
-Accountant - Resource groups “Analyst/User”, Role “Contributor” - Services (Azure SQL, Power BI, Teams)
-UX/UI Designer- Resource group “Developer/User”, Role “Contributor” - Services  (Visual Studio, Azure DevOps, Virtual Machine, Teams)
-Data Engineer - Resource group “Analyst/User” - Role “Contributor” - Services (Azure SQL, Azure DevOps, Teams)
-Software Engineer - Resource group “Developer/User/Analyst” - Role “Contributor” - Services (Azure SQL, Visual Studio, Azure DevOps, Virtual Machine, Teams)
-QA Automation - Resource group “Developer/User/Analyst” - Role “Contributor” - Services (Azure SQL, Visual Studio, Azure DevOps, Virtual Machine, Teams)
+Director – Subscription “Director”, Services (Power BI, Teams)
+IT Admin - Subscription “Admin”, Services (Power BI, Teams, Azure SQL, Azure Devops, Visual Studio, Virtual Machine)
+Accountant - Resource groups “Analyst/User”, Services (Azure SQL, Power BI, Teams)
+UX/UI Designer- Resource group “Developer/User”, Services (Visual Studio, Azure DevOps, Virtual Machine, Teams)
+Data Engineer - Resource group “Analyst/User”, Services (Azure SQL, Azure DevOps, Teams)
+Software Engineer - Resource group “Developer/User/Analyst”, Services (Azure SQL, Visual Studio, Azure DevOps, Virtual Machine, Teams)
+QA Automation - Resource group “Developer/User/Analyst”, Services (Azure SQL, Visual Studio, Azure DevOps, Virtual Machine, Teams)
