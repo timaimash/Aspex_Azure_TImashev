@@ -1,0 +1,31 @@
+$RunAsConnection = Get-AutomationConnection -Name "AzureRunAsConnection"
+Connect-AzAccount `
+    -ServicePrincipal `
+    -Tenant $RunAsConnection.TenantId `
+    -ApplicationId $RunAsConnection.ApplicationId `
+    -CertificateThumbprint $RunAsConnection.CertificateThumbprint | Write-Verbose
+Set-AzContext -Subscription $RunAsConnection.SubscriptionID | Write-Verbose
+
+#$subscription_name = (Get-AzContext).Subscription.Name
+$resourceGroupName = "azure_resource_timashev_1901"
+$storageAcc="azurestoragetimashev1901"
+#$cont= "1901-container"
+
+$key = (Get-AzStorageAccountKey -ResourceGroupName $resourceGroupName -StorageAccountName $storageAcc).Value[0]
+#Write-Output $key
+
+$StorageContext = New-AzStorageContext -StorageAccountName $storageAcc -StorageAccountKey $key
+#Write-Output $StorageContext
+
+$Container = Get-AzStorageContainer -Name $cont -Context $StorageContext  
+#Write-Output $Container
+
+$blobs = Get-AzStorageBlob -Container  $Container.Name -Context $StorageContext|Sort-Object -Property Date
+
+Write-Output $blobs
+
+$tmpfile = New-TemporaryFile
+$blobs| ConvertTo-Json -depth 1| Out-File $tmpfile
+
+#Copy the file to the storage account
+Set-AzStorageBlobContent -File $tmpfile -Blob "output.txt" -Container $Container.Name -Context $StorageContext -Force
