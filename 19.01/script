@@ -6,16 +6,16 @@ Connect-AzAccount `
     -CertificateThumbprint $RunAsConnection.CertificateThumbprint | Write-Verbose
 Set-AzContext -Subscription $RunAsConnection.SubscriptionID | Write-Verbose
 
-#$subscription_name = (Get-AzContext).Subscription.Name
+
 $resourceGroupName = "azure_resource_timashev_1901"
 $storageAcc="azurestoragetimashev1901"
 #$cont= "1901-container"
 
-$key = (Get-AzStorageAccountKey -ResourceGroupName $resourceGroupName -StorageAccountName $storageAcc).Value[0]
-#Write-Output $key
-
-$StorageContext = New-AzStorageContext -StorageAccountName $storageAcc -StorageAccountKey $key
+$StorageContext =(Get-AzStorageAccount -ResourceGroupName $resourceGroupName -AccountName $storageAcc).context
 #Write-Output $StorageContext
+
+$sasToken = New-AzStorageContainerSASToken -Name $cont -Permission rwdl -Context $StorageContext
+#Write-Output $sasToken
 
 $Container = Get-AzStorageContainer -Name $cont -Context $StorageContext  
 #Write-Output $Container
