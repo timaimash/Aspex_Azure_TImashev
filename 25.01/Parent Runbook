@@ -1,0 +1,32 @@
+$RunAsConnection = Get-AutomationConnection -Name "AzureRunAsConnection"
+Connect-AzAccount `
+    -ServicePrincipal `
+    -Tenant $RunAsConnection.TenantId `
+    -ApplicationId $RunAsConnection.ApplicationId `
+    -CertificateThumbprint $RunAsConnection.CertificateThumbprint | Write-Verbose
+$SourceTenantContext = Set-AzContext -Subscription $RunAsConnection.SubscriptionID 
+
+$ResourceGroupName = "azure_resource_timashev_1901"
+$StorageAccountName = "azurestoragetimashev1901"
+$AutomationAccountName = "azure-timashev-1901"
+$RunbookName = "Azure2501Read"
+$ContainerName = "1901-container"
+$BlobName = "blob2501.txt"
+
+$storageAccount = Get-AzStorageAccount -ResourceGroupName $ResourceGroupName -Name $StorageAccountName
+$Context = $storageAccount.Context
+$SASToken = New-AzStorageAccountSASToken -Context $Context `
+    -Service Blob,File,Table,Queue `
+    -ResourceType Service,Container,Object `
+    -Permission "racwdlup"
+
+#container name is added
+$params = @{"SASToken" = $SASToken; "StorageAccountName"= $StorageAccountName;"ContainerName"= $ContainerName;"BlobName"= $BlobName}
+
+for($i=0;$i -le 39; $i++)
+{
+	Start-AzAutomationRunbook -AutomationAccountName $AutomationAccountName `
+		-Name $RunbookName `
+		-ResourceGroupName $ResourceGroupName `
+		-Parameters $params
+}
