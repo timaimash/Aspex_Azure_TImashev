@@ -1,0 +1,31 @@
+param(
+	[Parameter(Mandatory = $true)]
+	[string] $SASToken,
+	[Parameter(Mandatory = $true)]
+	[string] $StorageAccountName,
+	[Parameter(Mandatory = $true)]
+	[string] $ContainerName,
+	[Parameter(Mandatory = $true)]
+	[string] $BlobName
+)
+
+$RunAsConnection = Get-AutomationConnection -Name "AzureRunAsConnection"
+Connect-AzAccount `
+    -ServicePrincipal `
+    -Tenant $RunAsConnection.TenantId `
+    -ApplicationId $RunAsConnection.ApplicationId `
+    -CertificateThumbprint $RunAsConnection.CertificateThumbprint | Write-Verbose
+$SourceTenantContext = Set-AzContext -Subscription $RunAsConnection.SubscriptionID 
+
+$Context = New-AzStorageContext -StorageAccountName $StorageAccountName -SASToken $SASToken
+$CloudBlob = (Get-AzStorageBlob -Context $Context -Container $ContainerName -Blob $BlobName).ICloudBlob
+
+$encoding = New-Object System.Text.UTF8Encoding
+$delimiter = "`t"
+
+$reader = $CloudBlob.OpenRead() 
+$reader = New-Object System.IO.StreamReader($reader, $encoding)
+while(-not $reader.EndOfStream) 
+{
+	write-output($reader.ReadLine())
+}
