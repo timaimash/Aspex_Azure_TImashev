@@ -1,0 +1,55 @@
+$RunAsConnection = Get-AutomationConnection -Name "AzureRunAsConnection"
+Connect-AzAccount `
+    -ServicePrincipal `
+    -Tenant $RunAsConnection.TenantId `
+    -ApplicationId $RunAsConnection.ApplicationId `
+    -CertificateThumbprint $RunAsConnection.CertificateThumbprint | Write-Verbose
+$SourceTenantContext = Set-AzContext -Subscription $RunAsConnection.SubscriptionID 
+
+$ResourceGroupName = "azure_resource_timashev_1901"
+$StorageAccountName = "azurestoragetimashev1901"
+$AutomationAccountName = "azure-timashev-1901"
+$RunbookName = "Azure2501Read"
+$ContainerName = "1901-container"
+$BlobName = "blob2501.txt"
+#timespan for webhook to last
+$ts = New-TimeSpan -Minutes 5
+
+
+
+$storageAccount = Get-AzStorageAccount -ResourceGroupName $ResourceGroupName -Name $StorageAccountName
+$Context = $storageAccount.Context
+$SASToken = New-AzStorageAccountSASToken -Context $Context `
+    -Service Blob,File,Table,Queue `
+    -ResourceType Service,Container,Object `
+    -Permission "racwdlup"
+
+#container name is added
+$params = @{"SASToken" = $SASToken; "StorageAccountName"= $StorageAccountName;"ContainerName"= $ContainerName;"BlobName"= $BlobName}
+
+$MyWebhook = Get-AzAutomationWebhook -RunbookName $RunbookName -ResourceGroup $ResourceGroupName -AutomationAccountName $AutomationAccountName
+
+if ($MyWebhook)
+{
+	Write-Output "Webhook found. Previous Webhook will be removed"
+	Set-AzAutomationWebhook -Name "MyWebhook" -ResourceGroup $ResourceGroupName -AutomationAccountName $AutomationAccountName -IsEnabled $False
+	Remove-AzAutomationWebhook -Name "MyWebhook" -ResourceGroup $ResourceGroupName -AutomationAccountName $AutomationAccountName
+}
+
+$MyWebhook = Get-AzAutomationWebhook -RunbookName $RunbookName -ResourceGroup $ResourceGroupName -AutomationAccountName $AutomationAccountName
+
+if (-not $MyWebhook)
+{
+	Write-Output "Webhook not found. New Webhook will be created"
+	$MyWebhook = New-AzAutomationWebhook -Name "MyWebhook" -Parameters $params -IsEnabled $True -ExpiryTime ((get-date) + $ts) -RunbookName $RunbookName -ResourceGroup $ResourceGroupName -AutomationAccountName $AutomationAccountName -Force
+	$link = $MyWebhook.WebhookURI
+	$MyWebhook
+}
+
+Write-output ("WebHook Url" + $link)
+
+for($i=0;$i -le 39; $i++)
+{
+Invoke-WebRequest -Uri $link -UseBasicParsing -Method Post 
+}
+
