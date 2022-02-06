@@ -1,0 +1,36 @@
+#first run can throw an error, not finding variable token. I noticed that newly created variable
+#needs time to appear in the system. So next run is recommended in ~5 mins, when variable token will be created.
+
+$RunAsConnection = Get-AutomationConnection -Name "AzureRunAsConnection"
+Connect-AzAccount `
+    -ServicePrincipal `
+    -Tenant $RunAsConnection.TenantId `
+    -ApplicationId $RunAsConnection.ApplicationId `
+    -CertificateThumbprint $RunAsConnection.CertificateThumbprint | Write-Verbose
+$SourceTenantContext = Set-AzContext -Subscription $RunAsConnection.SubscriptionID 
+
+$AutomationAccountName = "azure-timashev-1901"
+$ResourceGroupName = "azure_resource_timashev_1901"
+#params below
+$VaultName = "TimaKeyVault"
+$SecretName = "azure"
+$ApplicationID = $RunAsConnection.ApplicationId
+$TenantDomainName = "aspex.kz"
+$RunbookName = "Azure3101_Connect"
+
+$params = @{"VaultName" = $VaultName; "SecretName"= $SecretName; `
+	"ApplicationID"= $ApplicationID;"TenantDomainName"= $TenantDomainName; `
+	"AutomationAccountName" = $AutomationAccountName;
+	"ResourceGroupName" =  $ResourceGroupName}
+
+Start-AzAutomationRunbook -AutomationAccountName $AutomationAccountName `
+	-Name $RunbookName `
+	-ResourceGroupName $ResourceGroupName `
+	-Parameters $params
+
+$mytoken = Get-AzAutomationVariable -AutomationAccountName $AutomationAccountName -Name "token" -ResourceGroupName $ResourceGroupName
+$tokenValue = $mytoken.value
+
+#run graph api query
+$GrapGroupUrl = 'https://graph.microsoft.com/v1.0/Groups/'
+(Invoke-RestMethod -Headers @{Authorization = "Bearer $($tokenValue)"} -Uri $GrapGroupUrl -Method Get).value.displayName
