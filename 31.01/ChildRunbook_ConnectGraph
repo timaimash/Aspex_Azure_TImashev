@@ -34,8 +34,9 @@ $ConnectGraph = Invoke-RestMethod -Uri "https://login.microsoftonline.com/$Tenan
 
 $token = $ConnectGraph.access_token
 
+$flag = Get-AzAutomationVariable -AutomationAccountName $AutomationAccountName -Name "token" -ResourceGroupName $ResourceGroupName
 #save token as variable to retrieve from parent book
-if(-not $token)
+if(-not $flag)
 {
 New-AzAutomationVariable -AutomationAccountName $AutomationAccountName -Name "token" `
  -Encrypted $False -Value $ConnectGraph.access_token -ResourceGroupName $ResourceGroupName
