@@ -1,0 +1,55 @@
+$RunAsConnection = Get-AutomationConnection -Name "AzureRunAsConnection"
+Connect-AzAccount `
+    -ServicePrincipal `
+    -Tenant $RunAsConnection.TenantId `
+    -ApplicationId $RunAsConnection.ApplicationId `
+    -CertificateThumbprint $RunAsConnection.CertificateThumbprint | Write-Verbose
+$SourceTenantContext = Set-AzContext -Subscription $RunAsConnection.SubscriptionID 
+
+$AutomationAccountName = "azure-timashev-1901"
+$ResourceGroupName = "azure_resource_timashev_1901"
+#params
+$VaultName = "TimaKeyVault"
+$SecretName = "azure"
+$ApplicationID = $RunAsConnection.ApplicationId
+$TenantDomainName = "aspex.kz"
+$RunbookName = "Azure3101_Connect"
+
+$params = @{"VaultName" = $VaultName; "SecretName"= $SecretName; `
+	"ApplicationID"= $ApplicationID;"TenantDomainName"= $TenantDomainName}
+
+$job = Start-AzAutomationRunbook -AutomationAccountName $AutomationAccountName `
+	-Name $RunbookName `
+	-ResourceGroupName $ResourceGroupName `
+	-Parameters $params
+
+#show runbook is launched
+$job
+
+$jobid = $job.JobId.guid
+$jobstatus = " "
+
+#loop while child runbook is not completed
+while($jobstatus -ne "Completed")
+{
+	Start-Sleep -s 5
+	$jobstatus = (Get-AzAutomationJob -AutomationAccountName $AutomationAccountName -ResourceGroupName $ResourceGroupName -Id $jobid).status
+}
+#show runbook is completed
+Write-Output "Runbook is $jobstatus"
+
+#get output from child runbook
+$output = Get-AzAutomationJobOutput -AutomationAccountName $AutomationAccountName `
+	 -Id $jobid `
+	 -ResourceGroupName $ResourceGroupName `
+	 -Stream "Output" | Get-AzAutomationJobOutputRecord
+
+#show child runbook output
+$output
+
+#get token from output
+$tokenValue = $output.Value.Values[0]
+
+#run graph api query
+$GrapGroupUrl = 'https://graph.microsoft.com/v1.0/Groups/'
+(Invoke-RestMethod -Headers @{Authorization = "Bearer $($tokenValue)"} -Uri $GrapGroupUrl -Method Get).value.displayName
