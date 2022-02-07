@@ -34,6 +34,11 @@ while($jobstatus -ne "Completed")
 {
 	Start-Sleep -s 5
 	$jobstatus = (Get-AzAutomationJob -AutomationAccountName $AutomationAccountName -ResourceGroupName $ResourceGroupName -Id $jobid).status
+	#in case childrunbook fails
+	if ($jobstatus -eq "Failed") 
+	{
+    	break
+  	}
 }
 #show runbook is completed
 Write-Output "Runbook is $jobstatus"
