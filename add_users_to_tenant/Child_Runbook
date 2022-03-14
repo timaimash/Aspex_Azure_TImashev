@@ -1,0 +1,33 @@
+param(
+	[Parameter(Mandatory = $true)]
+	[string] $VaultName,
+	[Parameter(Mandatory = $true)]
+	[string] $SecretName,
+	[Parameter(Mandatory = $true)]
+	[string] $ApplicationID,
+	[Parameter(Mandatory = $true)]
+	[string] $TenantDomainName
+)
+
+$RunAsConnection = Get-AutomationConnection -Name "AzureRunAsConnection"
+Connect-AzAccount `
+    -ServicePrincipal `
+    -Tenant $RunAsConnection.TenantId `
+    -ApplicationId $RunAsConnection.ApplicationId `
+    -CertificateThumbprint $RunAsConnection.CertificateThumbprint | Write-Verbose
+
+#create token to connect to graph
+$Body = @{    
+Grant_Type    = "client_credentials"
+Scope         = "https://graph.microsoft.com/.default"
+client_Id     = $ApplicationID
+Client_Secret = Get-AzKeyVaultSecret -VaultName $VaultName -Name $SecretName -AsPlainText
+} 
+
+#connect to graph
+$ConnectGraph = Invoke-RestMethod -Uri "https://login.microsoftonline.com/$TenantDomainName/oauth2/v2.0/token" `
+-Method POST -Body $Body
+
+$token = $ConnectGraph.access_token
+
+Write-Output $token
