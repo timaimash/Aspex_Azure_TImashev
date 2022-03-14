@@ -1,0 +1,134 @@
+$RunAsConnection = Get-AutomationConnection -Name "AzureRunAsConnection"
+Connect-AzAccount `
+    -ServicePrincipal `
+    -Tenant $RunAsConnection.TenantId `
+    -ApplicationId $RunAsConnection.ApplicationId `
+    -CertificateThumbprint $RunAsConnection.CertificateThumbprint | Write-Verbose
+$SourceTenantContext = Set-AzContext -Subscription $RunAsConnection.SubscriptionID 
+
+$AutomationAccountName = "prodshared"
+$ResourceGroupName = "prod-shared-001"
+$GroupName = "Prod-Shared-001"
+$VaultName = "sharedkey"
+$SecretName = "GreenCapital"
+$ApplicationID = "d0f7a66f-194e-4dda-a4dc-41e7e4785cef"
+$Tenants = @("biavnerei.onmicrosoft.com","biagrncapkaz.onmicrosoft.com")
+$mailHT = @{biavnerei=$biavnereiMails;biagrncapkaz=$biagrncapkazMails}
+$RunbookName = "ChildGraphConnect"
+$companyName = "biagrncapkaz"
+
+foreach($TenantDomainName in $Tenants)
+{
+#***Start of TenantDomain loop
+
+$params = @{"VaultName" = $VaultName; "SecretName"= $SecretName; `
+	"ApplicationID"= $ApplicationID;"TenantDomainName"= $TenantDomainName}
+
+$job = Start-AzAutomationRunbook -AutomationAccountName $AutomationAccountName `
+	-Name $RunbookName `
+	-ResourceGroupName $ResourceGroupName `
+	-Parameters $params
+
+#show runbook is launched
+#$job
+
+$jobid = $job.JobId.guid
+$jobstatus = " "
+
+#loop while child runbook is not completed
+while($jobstatus -ne "Completed")
+{
+	Start-Sleep -s 5
+	$jobstatus = (Get-AzAutomationJob -AutomationAccountName $AutomationAccountName -ResourceGroupName $ResourceGroupName -Id $jobid).status
+	#in case childrunbook fails
+	if ($jobstatus -eq "Failed") 
+	{
+    	break
+  	}
+}
+#show runbook is completed
+Write-Output "Runbook " $RunbookName " is " $jobstatus
+
+#get output from child runbook
+$output = Get-AzAutomationJobOutput -AutomationAccountName $AutomationAccountName `
+	 -Id $jobid `
+	 -ResourceGroupName $ResourceGroupName `
+	 -Stream "Output" | Get-AzAutomationJobOutputRecord
+
+#show child runbook output
+Write-Output $output "`n" 
+
+#get token from output
+$tokenValue = $output.Value.Values[0]
+
+#run graph api query
+$GrapGroupUrl = 'https://graph.microsoft.com/v1.0/groups?$select=displayName,id'
+$groupId = (Invoke-RestMethod -Headers @{Authorization = "Bearer $($tokenValue)"} -Uri $GrapGroupUrl -Method Get).value|where displayName -eq $GroupName|Select-Object -ExpandProperty id
+$GrapGroupUrl = "https://graph.microsoft.com/v1.0/groups/{$groupId}/members" + '?$count=true&$select=displayName,mail'
+
+#get only first word from domain name
+$Regex = [Regex]::new("(?<=)(.*)(?=.on)")   
+$Match = $Regex.Match($TenantDomainName)           
+#add mails to related tenant mail group
+$mailHT[$Match.Value] = (Invoke-RestMethod -Headers @{Authorization = "Bearer $($tokenValue)"} -Uri $GrapGroupUrl -Method Get).value|Select-Object -ExpandProperty mail
+
+#***End of TenantDomain loop
+}
+
+#list of mails to be added to our group
+$ListToAdd = foreach ( $clientmail in $mailHT['biagrncapkaz'] )
+{
+	if ( $mailHT['biavnerei'] -notcontains $clientmail )
+	{
+		@($clientmail)
+	}
+}
+
+#list of mails to be removed from the group
+$ListToRemove = foreach ( $parentmail in $mailHT['biavnerei'] )
+{
+	if ( $mailHT['biagrncapkaz'] -notcontains $parentmail )
+	{
+		@($parentmail)
+	}
+}
+
+Write-Output "Emails to be added to group:" $ListToAdd "`nEmails to be removed from group:"  $ListToRemove
+
+#Add users to group
+$MsalToken = Get-MsalToken `
+	-TenantId $RunAsConnection.TenantId `
+	-ClientId $ApplicationID `
+	-ClientSecret (Get-AzKeyVaultSecret -VaultName $VaultName -Name $SecretName -AsPlainText | ConvertTo-SecureString -AsPlainText -Force)
+
+#Connect to Graph using access token
+Connect-Graph -AccessToken $MsalToken.AccessToken
+
+foreach ($mail in $ListToAdd)
+{
+#***start adding users loop
+#get position name to create username          
+$Regex = [Regex]::new("(?<=)(.*)(?=@)")           
+$Match = $Regex.Match($mail)           
+#create username based on mail       
+$username = "guest" + "_" + $companyName + "_" + $Match.Value         
+
+$groupid = (Get-MgGroup|where DisplayName -eq $GroupName).Id
+
+New-MgInvitation `
+	-InvitedUserDisplayName $username `
+	-InvitedUserEmailAddress $mail `
+	-InviteRedirectUrl "https://azure.com"
+
+$users = Get-MgUser 
+$userid = ($users|where Mail -eq $mail).Id
+
+#time to wait for user to be added
+Start-Sleep -s 5
+#add user to group prodshared
+New-MgGroupMember `
+	-GroupId $groupid `
+	-DirectoryObjectId $userid
+
+#***finish adding users loop
+}
