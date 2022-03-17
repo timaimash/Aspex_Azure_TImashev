@@ -104,6 +104,9 @@ $MsalToken = Get-MsalToken `
 #Connect to Graph using access token
 Connect-Graph -AccessToken $MsalToken.AccessToken
 
+if ($ListToAdd)
+{
+#start if
 foreach ($mail in $ListToAdd)
 {
 #***start adding users loop
@@ -132,3 +135,23 @@ New-MgGroupMember `
 
 #***finish adding users loop
 }
+#***finish if true
+}
+else
+{ Write-Output "No mails to add"}
+
+if ($ListToRemove)
+{
+#start if
+#start deleting users that must be deleted from, insufficient privileges
+$users = Get-MgUser
+foreach ($mail in $ListToRemove)
+{
+$userid = ($users|where Mail -eq $mail).Id
+Remove-MgUser `
+    -UserId $userid
+}
+#finish if true
+}
+else
+{ Write-Output "No mails to remove"}
